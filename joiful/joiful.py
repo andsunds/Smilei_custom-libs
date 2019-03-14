@@ -3,6 +3,11 @@
 import numpy as np
 import scipy as sp
 
+def inRange(x,Min,Max):
+    # Helperfunction for if x is in range
+    # Min <= x < Max
+    return x>=Min and x<Max
+
 
 def get_dist2D(x_data,p_data,weights, xlim,Nx, plim,Np):
     # Calcualtes the distribution function on a uniform x-p bin-grid based on
@@ -48,10 +53,6 @@ def get_dist2D(x_data,p_data,weights, xlim,Nx, plim,Np):
     x_bins=np.linspace(xlim[0],xlim[1],num=Nx);
     p_bins=np.linspace(plim[0],plim[1],num=Np);
     
-
-    def bin_cond(ind,max_ind):
-        return ind >= 0 and ind < max_ind
-    
     # Loop over every particle, adding its weight to the distribution function
     # matrix element given by the indices given in x_data_ind and p_data_ind.
     # If a particle is outside the bounds set by xlim and plim, then it is
@@ -64,10 +65,7 @@ def get_dist2D(x_data,p_data,weights, xlim,Nx, plim,Np):
         #   (x_bin-dx/2) <= x_data < (x_bin+dx/2).
         x_data_ind=int((x_data[i]-xlim[0])/dx); 
         p_data_ind=int((p_data[i]-plim[0])/dp);
-        #print('xi =',x_data_ind) ## DEBUG
-        #print('pi =',p_data_ind) ## DEBUG
-        if bin_cond(x_data_ind,Nx) and bin_cond(p_data_ind,Np):
-            #print("Got one!") ## DEBUG
+        if inRange(x_data_ind,0,Nx) and inRange(p_data_ind,0,Np):
             f[p_data_ind, x_data_ind] += weights[i];
         #end if
     #end for
@@ -89,11 +87,9 @@ def get_density(x_data,weights, xlim):
     
     N=x_data.size #Number of data points
     n=0
-    def cond(x,Min,Max):
-        return x >= Min and x <= Max
     
     for i in range(N):
-        if cond(x_data[i],xlim[0],xlim[1]):
+        if inRange(x_data[i],xlim[0],xlim[1]):
             n+=weights[i]
     # end for
     return n/(xlim[1]-xlim[0])
@@ -116,11 +112,9 @@ def get_p1_moment_nonRel(x_data,p_data,weights, xlim):
     
     N=x_data.size #Number of data points
     n=0
-    def cond(x,Min,Max):
-        return x >= Min and x <= Max
     P=0
     for i in range(N):
-        if cond(x_data[i],xlim[0],xlim[1]):
+        if inRange(x_data[i],xlim[0],xlim[1]):
             n+=weights[i]
             P+=weights[i]*p_data[i]
     # end for
@@ -147,12 +141,9 @@ def get_p2_moment_nonRel(x_data,p_data,weights, xlim):
     
     N=x_data.size #Number of data points
     P, n = get_p1_moment_nonRel(x_data,p_data,weights, xlim)
-    
-    def cond(x,Min,Max):
-        return x >= Min and x <= Max
     T=0
     for i in range(N):
-        if cond(x_data[i],xlim[0],xlim[1]):
+        if inRange(x_data[i],xlim[0],xlim[1]):
             T+=weights[i]*(p_data[i]-P)**2
     #end for
     dx=(xlim[1]-xlim[0])
