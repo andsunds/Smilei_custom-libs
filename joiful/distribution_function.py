@@ -1,5 +1,3 @@
-### Joiful -- Just anOther Independent FUnction Library
-### My custom package for processing Smilei data extracted using Happi
 import numpy as np
 import scipy as sp
 
