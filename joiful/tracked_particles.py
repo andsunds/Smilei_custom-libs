@@ -10,6 +10,11 @@ coordinateDict={4:['x','px','py','pz'],
                 5:['x','y','px','py','pz'],
                 6:['x','y','z','px','py','pz']}
 
+
+#def get_IDs_in_box(trackedDiagnostic, timeStep, box, **kwargs):
+    
+    
+
 def extract_trajectories(trackedDiagnostic, IDs, **kwargs):
     # Function for exctracting the particle trajectories of the
     # particles with ID in IDs
@@ -37,7 +42,7 @@ def extract_trajectories(trackedDiagnostic, IDs, **kwargs):
     if path.endswith('.hdf5'):
         filename=path
     else:
-        filename=path+'/trajectories.hdf5'
+        filename=path+'/trajectories_'+trackedDiagnostic.species+'.hdf5'
 
     if 'coordinates' not in locals():
         coordinates=coordinateDict[4]#['x','px','py','pz']
@@ -72,8 +77,9 @@ def extract_trajectories(trackedDiagnostic, IDs, **kwargs):
         print("I have nothing to add.")
         return
     
-
+    ## Defining how often to print progress
     printout_every=N_timeSteps//100
+    
     for i in range(N_timeSteps):
         n=timeSteps[i]
         ## Printout every 1% of the progress
@@ -148,3 +154,7 @@ def read_trajectories(filename, **kwargs):
                 dataDict[int(Id)][coordinateDict[Ncoord][i]]=data[:,i]
     ## end retrive data from file
     return dataDict
+
+
+
+
