@@ -3,4 +3,4 @@
 
 from .distribution_function import get_dist2D, get_density, get_p1_moment_nonRel, get_p2_moment_nonRel
 
-from .tracked_particles import extract_trajectories, read_trajectories
+from .tracked_particles import get_IDs_in_box, extract_trajectories, read_trajectories

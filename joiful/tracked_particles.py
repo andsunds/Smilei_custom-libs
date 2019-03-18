@@ -11,9 +11,42 @@ coordinateDict={4:['x','px','py','pz'],
                 6:['x','y','z','px','py','pz']}
 
 
-#def get_IDs_in_box(trackedDiagnostic, timeStep, box, **kwargs):
+def get_IDs_in_box(trackedDiagnostic, timeStep, box, **kwargs):
+    # Function for finding the particles which are in a given
+    # phase-space box at a given time step.
+    #
+
+    ## Checks the keys
+    for key in kwargs.keys():
+        if key != '': ## Dummy check, to see that there are no keywords given
+            raise KeyError('Key: %s not supported'%key)
+    #end key check
     
+    particles = trackedDiagnostic.getData(timestep=timeStep)
+    ## The size of the array of partilces (in the first dimension of the box) 
+    N_particles=particles[timeStep][list(box.keys())[0]].size
+    ## Array of bools with the particles satisfying the box conditions
+    inBox=np.full(N_particles, True, dtype=bool)
+
+    ## looping over the box dimensions
+    for dim in box.keys():
+        tmp_coord=particles[timeStep][dim]
+        condition=np.sort(box[dim])
+        ##Check that only two limits are given for the box dimension
+        if condition.size != 2:
+            print("Recived box condition %s with %d bounds"%(str(dim),condition.size))
+            raise ValueError("The box condition can only have 2 and only 2 bounds!")
+        ## Refining the boolean array with the current box condition
+        inBox=np.logical_and(inBox,## Particles satisfying the previous criterias, and
+                                   ## the ones satisfying the present criteria
+                             np.logical_and(tmp_coord>condition[0],tmp_coord<condition[1]))
+    #end for keys in box
+
+    if not np.any(inBox):
+        print("Did not find any particles in the box. Maybe the conditions are too tight.")
     
+    return particles[timeStep]['Id'][inBox]
+
 
 def extract_trajectories(trackedDiagnostic, IDs, **kwargs):
     # Function for exctracting the particle trajectories of the
