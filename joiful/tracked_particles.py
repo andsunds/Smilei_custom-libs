@@ -149,12 +149,19 @@ def read_trajectories(filename, **kwargs):
     for key in kwargs.keys():
         if key=='dataset_IDs':
             dataset_IDs=kwargs[key]
+        elif key=='mask_removed':
+            mask_removed=kwargs[key]
         else:
             raise KeyError('Key: %s not supported'%key)
     ##end for kwargs.keys
-    h5File=h5py.File(filename,'r')
+    try:
+        h5File=h5py.File(filename,'r')
+    except:
+        return {}
     h5Keys=h5File.keys()
     ## Default values
+    if 'mask_removed' not in locals():
+        mask_removed=False
     if 'dataset_IDs' not in locals():
         dataset_IDs=list(h5Keys)
     else:
@@ -171,7 +178,7 @@ def read_trajectories(filename, **kwargs):
                 print("Unsupported coordinate '%s'."%c)
                 print("This file only supports the dataset_IDs:")
                 print(list(h5Keys))
-                return -1
+                return {}
     ##end default values
 
     ## Retrive the desired data from file
@@ -180,7 +187,11 @@ def read_trajectories(filename, **kwargs):
         if Id == timeStep_str:
             dataDict[Id] = np.array(h5File.get(Id))
         else:
+            ## data is an [N_timeSteps * Ncoord] array of particle coordinates
             data=np.array(h5File.get(Id))
+            if mask_removed:
+                data_mask=np.full(data.shape, np.reshape(np.all(data == 0, axis=1),(data.shape[0],1)) )
+                data=np.ma.masked_where(data_mask, data)
             Ncoord=data.shape[1]
             dataDict[int(Id)]={}
             for i in range(Ncoord):
