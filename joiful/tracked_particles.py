@@ -21,6 +21,7 @@ def get_IDs_in_box(trackedDiagnostic, timeStep, box, **kwargs):
         if key != '': ## Dummy check, to see that there are no keywords given
             raise KeyError('Key: %s not supported'%key)
     #end key check
+
     
     particles = trackedDiagnostic.getData(timestep=timeStep)
     ## The size of the array of partilces (in the first dimension of the box) 
@@ -46,6 +47,92 @@ def get_IDs_in_box(trackedDiagnostic, timeStep, box, **kwargs):
         print("Did not find any particles in the box. Maybe the conditions are too tight.")
     
     return particles[timeStep]['Id'][inBox]
+
+def get_ID_index(particles_n_Id,need_to_find_IDs,ind_IDs):
+    ## Loop over all particles to find the indeces of the IDs
+    ## we're looking for
+    for j in range(particles_n_Id.size):
+        ## check if that particle Id maches with any of the ones
+        ## we want to find:
+        if np.any(need_to_find_IDs==particles_n_Id[j]):
+            ind_IDs.append(j)
+            need_to_find_IDs.remove(particles_n_Id[j])
+        ## Break if there are no more indeces to find
+        if len(need_to_find_IDs)==0:
+            break
+    #end find ID index
+    return ind_IDs
+
+def was_IDs_in_box(trackedDiagnostic, IDs, timeSteps, box, **kwargs):
+    # Function for finding the particles which are in a given
+    # phase-space box at a given time step.
+    #
+
+    ## Checks the keys
+    for key in kwargs.keys():
+        if key != '': ## Dummy check, to see that there are no keywords given
+            raise KeyError('Key: %s not supported'%key)
+    #end key check
+
+    ## The size of the array of partilces (in the first dimension of the box) 
+    N_IDs=IDs.size
+    ## Array of bools with the particles satisfying the box conditions
+    inBox=np.full(N_IDs, True, dtype=bool)
+
+    tmp_IDs=list(IDs)
+    IDs=list(IDs)
+    return_IDs=[]
+    n=timeSteps[0]
+    ind_IDs=get_ID_index(trackedDiagnostic.getData(timestep=n)[n]['Id'],tmp_IDs,[])
+    print(len(ind_IDs))
+    
+    for n in timeSteps:
+        print("Timestep = %d" % n)
+        print(len(IDs))
+        if len(IDs)==0:
+            print("Breaking")
+            break
+        ## Read in data
+        particles   = trackedDiagnostic.getData(timestep=n)
+        
+        ## Figures out which IDs needs to be looked up again (compared
+        ## to from previous timestep):
+        print("Checking what to look for")
+        need_to_find_IDs=[]
+        i=0
+        while i < len(ind_IDs):
+            if particles[n]['Id'][ind_IDs[i]] == IDs[i]:
+                i+=1
+            else:
+                need_to_find_IDs.append(IDs[i])
+                del ind_IDs[i]
+        #end look for which IDs to find
+        if len(need_to_find_IDs)>0:
+            print("looping over particles")
+            ind_IDs=get_ID_index(particles[n]['Id'],need_to_find_IDs,ind_IDs)
+        
+        print("Looping over IDs")
+        i=0
+        while i < len(ind_IDs):
+            j=ind_IDs[i]
+            ## looping over the box dimensions
+            inBox=True
+            for dim in box.keys():
+                tmp_coord=particles[n][dim][j]
+                condition=np.sort(box[dim])
+                ## Refining the boolean array with the current box condition
+                inBox=inBox and (tmp_coord>condition[0] and tmp_coord<condition[1])
+            #end for keys in box
+            if inBox:
+                del ind_IDs[i]
+                IDs.remove(particles[n]['Id'][j])
+                return_IDs.append(particles[n]['Id'][j])
+            else:
+                i+=1
+        #end loop over IDs
+        print(len(IDs))
+    #end for timeSteps
+    return return_IDs
 
 
 def extract_trajectories(trackedDiagnostic, IDs, **kwargs):
@@ -120,6 +207,7 @@ def extract_trajectories(trackedDiagnostic, IDs, **kwargs):
             print("i = %4d of %d (%0.0f %% done)" % (i,N_timeSteps,100*i/N_timeSteps))
         ## Opening the file
         particles=trackedDiagnostic.getData(timestep=n)
+        
         for Id in IDs:
             ## Finds the correct particle
             index=np.where(particles[n]['Id']==Id)[0]
@@ -134,14 +222,17 @@ def extract_trajectories(trackedDiagnostic, IDs, **kwargs):
                 j+=1
             ##end for coordinates
         ##end for IDs
+        
+        ## The timestep=n data is appended every time to the _rawData
+        ## property of the trackedDiagnostic object, which has to be
+        ## manually deleted to free the memory.
+        trackedDiagnostic._rawData=None
     ##end for timesteps
-
+    
     print("Writing to file")
     hf.close()
     print("DONE!!!")
     return
-
-
 
 
 
