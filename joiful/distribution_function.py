@@ -1,50 +1,60 @@
 import numpy as np
 import scipy as sp
+import warnings
 
-def inRange(x,Min,Max):
+
+def inRange(x,Min,Max,shift_coordinates=False,delta=0):
     # Helperfunction for if x is in range
     # Min <= x < Max
-    return np.logical_and(x>=Min, x<Max)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore')
+        
+        if shift_coordinates or delta==0: return np.logical_and(x>=Min, x<Max)
+        else: return np.logical_and(x>Min-0.5*delta, x<Max-0.5*delta)
 
-def get_dist1D(x_data,weights, xlim,Nx, **kwargs):
+
+
+def get_dist1D(x_data,weights, xlim,Nx,
+               scale='lin',shift_coordinates=False, **kwargs):
     
     ## Checks the keys
     for key in kwargs.keys():
         if key=='mask':
             mask=kwargs[key]
-        elif key=='scale':
-            scale=kwargs[key]
         else:
             raise KeyError('Key: %s not supported'%key)
     ## Default values
     if 'mask' not in locals():
         mask=np.full(weights.size, True, dtype=bool)
-    if 'scale' not in locals():
-        scale='lin'
     ##end default values
-    
-    mask=np.logical_and(mask, inRange(x_data,xlim[0],xlim[1]))
-    IND=np.where(mask)[0]
-    
+
+    # Scale functions
     if scale=='log':
         sf=lambda x: np.log(x)
         sf_inv=lambda y: np.exp(y)
     elif scale=='lin':
         sf=lambda x: x
         sf_inv=lambda y: y
-    ## end rangeMask
 
+    # Limits and bin sizes
     ulim=sf(xlim[1])
     llim=sf(xlim[0])
-    
-    # The size of the bins in x and p:
     dx=(ulim-llim)/Nx;
+    
+    mask=np.logical_and(mask, inRange(sf(x_data),llim,ulim,shift_coordinates,delta=dx))
+    IND=np.where(mask)[0]
+    ## end rangeMask
+
     
     # Output init:
     f=np.zeros(Nx, dtype=np.float64);
-    x_bins=np.linspace(llim,ulim,num=Nx);
-
-    x_data_ind=np.array((sf(x_data)-llim)/dx, dtype=np.int)
+    
+    if shift_coordinates:
+        x_bins=np.linspace(llim,ulim,num=Nx+1);
+        x_data_ind=np.array(np.floor((sf(x_data)-llim)/dx), dtype=np.int)
+    else:
+        x_bins=np.linspace(llim,ulim,num=Nx);
+        x_data_ind=np.array(np.around((sf(x_data)-llim)/dx), dtype=np.int)
         
     # Loop over every particle, adding its weight to the distribution
     # binning given by the indices given in x_data_ind.
@@ -62,7 +72,8 @@ def get_dist1D(x_data,weights, xlim,Nx, **kwargs):
 ##end def
 
 
-def get_dist2D(x_data,p_data,weights, xlim,Nx, plim,Np, **kwargs):
+def get_dist2D(x_data,p_data,weights, xlim,Nx, plim,Np,
+               get_density=False,shift_coordinates=True, **kwargs):
     # Calcualtes the distribution function on a uniform x-p bin-grid based on
     # each particle phase-space coordinates and weights.
     # 
@@ -95,46 +106,49 @@ def get_dist2D(x_data,p_data,weights, xlim,Nx, plim,Np, **kwargs):
     
     ## Checks the keys
     for key in kwargs.keys():
-        if key=='get_density':
-            get_density=kwargs[key]
-        elif key=='mask':
+        if key=='mask':
             mask=kwargs[key]
         else:
             raise KeyError('Key: %s not supported'%key)
     ## Default values
-    if 'get_density' not in locals():
-        get_density=False
-    if 'mask' not in locals():
-        mask=np.full(weights.size, True, dtype=bool)
-        #IND=np.where(mask)[0]
-    #else:
-        #IND=range(weights.size)
+    if 'mask' not in locals(): mask=np.full(weights.size, True, dtype=bool)
     ##end default values
-
-    if get_density:
-        ## When we want the density, we do not want to exclude the
-        ## particles outside the momentum range.
-        rangeMask=inRange(x_data,xlim[0],xlim[1])
-    else:
-        rangeMask=np.logical_and(inRange(x_data,xlim[0],xlim[1]),
-                                 inRange(p_data,plim[0],plim[1]))
-    ## end rangeMask
-    mask=np.logical_and(mask, rangeMask)
-    IND=np.where(mask)[0]
-    #N=weights.size #Number of data points
-    
 
     # The size of the bins in x and p:
     dx=(xlim[1]-xlim[0])/Nx;
     dp=(plim[1]-plim[0])/Np;
+
+    if get_density:
+        ## When we want the density, we do not want to exclude the
+        ## particles outside the momentum range.
+        rangeMask=inRange(x_data,xlim[0],xlim[1],shift_coordinates,dx)
+    else:
+        rangeMask=np.logical_and(inRange(x_data,xlim[0],xlim[1],shift_coordinates,dx),
+                                 inRange(p_data,plim[0],plim[1],shift_coordinates,dp))
+    ## end rangeMask
+    mask=np.logical_and(mask, rangeMask)
+    IND=np.where(mask)[0]
+    #N=weights.size #Number of data points
+
     
     # Output init:
-    f=np.zeros((Np,Nx), dtype=np.float64);
-    x_bins=np.linspace(xlim[0],xlim[1],num=Nx);
-    p_bins=np.linspace(plim[0],plim[1],num=Np);
+    f=np.zeros((Np,Nx), dtype=np.float64)
 
-    x_data_ind=np.array((x_data-xlim[0])/dx, dtype=np.int)
-    p_data_ind=np.array((p_data-plim[0])/dp, dtype=np.int)
+    ## Shift coordinates to be used with pcolor or other "pixel"
+    ## drawing function, where the coordinates are the corners of the
+    ## pixels.
+    if shift_coordinates:
+        x_bins=np.linspace(xlim[0],xlim[1],num=Nx+1)
+        p_bins=np.linspace(plim[0],plim[1],num=Np+1)
+        x_data_ind=np.array(np.floor((x_data-xlim[0])/dx), dtype=np.int)
+        p_data_ind=np.array(np.floor((p_data-plim[0])/dp), dtype=np.int)
+    else:
+        x_bins=np.linspace(xlim[0],xlim[1],num=Nx)
+        p_bins=np.linspace(plim[0],plim[1],num=Np)
+        x_data_ind=np.array(np.floor((x_data-xlim[0])/dx), dtype=np.int)
+        p_data_ind=np.array(np.floor((p_data-plim[0])/dp), dtype=np.int)
+
+
         
     # Loop over every particle, adding its weight to the distribution function
     # matrix element given by the indices given in x_data_ind and p_data_ind.
@@ -161,49 +175,47 @@ def get_dist2D(x_data,p_data,weights, xlim,Nx, plim,Np, **kwargs):
 ##end def
 
 
-def get_p_moment_rel(x_data,p_data,weights, xlim, Nx, **kwargs):
-    return get_1moment_rel(x_data,p_data,weights, xlim, Nx, **kwargs)
-
-def get_1moment_rel(x_data,y_data,weights, xlim, Nx, **kwargs):
+def get_1moment_rel(x_data,y_data,weights, xlim, Nx,
+                    fill_zeros=True,xscale=1, **kwargs):
     # 
     # 
     #
 
     ## Checks the keys
     for key in kwargs.keys():
-        if key=='xscale':
-            xscale=kwargs[key]
-        elif key=='mask':
+        if key=='mask':
             mask=kwargs[key]
-        elif key=='fill_zeros':
-            fill_zeros=kwargs[key]
         else:
             raise KeyError('Key: %s not supported'%key)
     ## Default values
-    if 'xscale' not in locals():
-        xscale=1
+
     if 'mask' not in locals():
         mask=np.full(weights.size, True, dtype=bool)
-    if 'fill_zeros' not in locals():
-        fill_zeros=True 
     ##end default values
-    rangeMask=inRange(x_data,xlim[0],xlim[1])
+    if len(y_data.shape)>1:
+        Y=np.zeros((Nx,y_data.shape[1]))
+    else: Y=np.zeros(Nx)
+    n=np.zeros(Nx)
+    dx=(xlim[1]-xlim[0])/Nx;
+    
+    rangeMask=inRange(x_data,xlim[0],xlim[1],shift_coordinates=False,delta=dx)
     mask=np.logical_and(mask, rangeMask)
     IND=np.where(mask)[0]
     
-    
-    Y=np.zeros(Nx)
-    n=np.zeros(Nx)
-    dx=(xlim[1]-xlim[0])/Nx;
     for i in IND:
         # Each particle's position is converted to an interger index to
         # be used in the energy and density arrays.
-        x_data_ind=int((x_data[i]-xlim[0])/dx); 
+        x_data_ind=int(np.around((x_data[i]-xlim[0])/dx))
         n[x_data_ind] += weights[i]
         Y[x_data_ind] += weights[i] * y_data[i]
     ##end for
     n=np.ma.masked_where(n<=0, n/(dx*xscale))
-    Y=Y/(dx*xscale * n)
+    if len(y_data.shape)>1:
+        nY=n.copy()
+        nY=np.tile(nY,(Y.shape[1],1)).transpose()
+        Y=Y/(dx*xscale * nY)
+    else:
+        Y=Y/(dx*xscale * n)
     if fill_zeros:
         return Y.filled(fill_value=0.0), n.filled(fill_value=0.0)
     else:
@@ -234,18 +246,20 @@ def get_E_moment_rel(x_data,p_data,weights, xlim, Nx, **kwargs):
     if 'mask' not in locals():
         mask=np.full(weights.size, True, dtype=bool)
     ##end default values
-    rangeMask=inRange(x_data,xlim[0],xlim[1])
-    mask=np.logical_and(mask, rangeMask)
-    IND=np.where(mask)[0]
-    
-    
+
     E=np.zeros(Nx)
     n=np.zeros(Nx)
     dx=(xlim[1]-xlim[0])/Nx;
+    
+    rangeMask=inRange(x_data,xlim[0],xlim[1],shift_coordinates=False,delta=dx)
+    mask=np.logical_and(mask, rangeMask)
+    IND=np.where(mask)[0]
+    
+
     for i in IND:
         # Each particle's position is converted to an interger index to
         # be used in the energy and density arrays.
-        x_data_ind=int((x_data[i]-xlim[0])/dx);       
+        x_data_ind=int(np.around((x_data[i]-xlim[0])/dx))      
         n[x_data_ind] += weights[i]
         E[x_data_ind] += weights[i] * (np.sqrt(1+p_data[i]**2)-1)
         #E[x_data_ind] += weights[i] * p_data[i]**2
@@ -256,87 +270,5 @@ def get_E_moment_rel(x_data,p_data,weights, xlim, Nx, **kwargs):
     return E, n
 ##end def
 
-
-
-######################################################################
-################ Rather simple and outdated functions ################
-######################################################################
-
-def get_density(x_data,weights, xlim):
-    # Calcualtes the density of particles within the range given in xlim.
-    #
-    # Input arguments:
-    # x_data - [N*1]
-    #    containing each particle's configuration space coord.
-    # weights - [N*1]
-    #    N element vector containing each particle's weight
-    # xlim - [2*1]
-    #    Then centers of the limiting bnis in configuration space
-    #
-    
-    N=x_data.size #Number of data points
-    n=0
-    
-    for i in range(N):
-        if inRange(x_data[i],xlim[0],xlim[1]):
-            n+=weights[i]
-    # end for
-    return n/(xlim[1]-xlim[0])
-
-def get_p1_moment_nonRel(x_data,p_data,weights, xlim):
-    # Calculates the first momentum moment of the particles within
-    # the rage given in xlim.
-    #
-    # 
-    # Input arguments:
-    # x_data - [N*1]
-    #    containing each particle's configuration space coord.
-    # p_data - [N*1]
-    #    N element vector containing each particle's momentum space coord.
-    # weights - [N*1]
-    #    N element vector containing each particle's weight
-    # xlim - [2*1]
-    #    Then centers of the limiting bnis in configuration space
-    #
-    
-    N=x_data.size #Number of data points
-    n=0
-    P=0
-    for i in range(N):
-        if inRange(x_data[i],xlim[0],xlim[1]):
-            n+=weights[i]
-            P+=weights[i]*p_data[i]
-    # end for
-    dx=(xlim[1]-xlim[0])
-    n=n/dx
-    P=(P/dx)/n
-    return P, n
-
-def get_p2_moment_nonRel(x_data,p_data,weights, xlim):
-    # Calculates the second momentum moment of the particles within
-    # the rage given in xlim.
-    #
-    # 
-    # Input arguments:
-    # x_data - [N*1]
-    #    containing each particle's configuration space coord.
-    # p_data - [N*1]
-    #    N element vector containing each particle's momentum space coord.
-    # weights - [N*1]
-    #    N element vector containing each particle's weight
-    # xlim - [2*1]
-    #    Then centers of the limiting bnis in configuration space
-    #
-    
-    N=x_data.size #Number of data points
-    P, n = get_p1_moment_nonRel(x_data,p_data,weights, xlim)
-    T=0
-    for i in range(N):
-        if inRange(x_data[i],xlim[0],xlim[1]):
-            T+=weights[i]*(p_data[i]-P)**2
-    #end for
-    dx=(xlim[1]-xlim[0])
-    T=(T/dx)/n
-    return T, P, n
 
 
