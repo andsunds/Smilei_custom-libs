@@ -1,7 +1,10 @@
+# A Package with some of the common natural constants given in SI units
+
 from math import pi
+PI=pi
 
 c=299792458            #m/s           EXACT
-h=6.62607015e-34        #Js=kg m^2/s   EXACT
+h=6.62607015e-34       #Js=kg m^2/s   EXACT
 hbar=h/(2*pi)          #Js=kg m^2/s
 
 e=1.602176634e-19      #C             EXACT
