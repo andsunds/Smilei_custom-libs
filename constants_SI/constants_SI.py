@@ -1,4 +1,23 @@
-# A Package with some of the common natural constants given in SI units
+### Constants_SI a package with the common natural constants given in
+### SI units
+
+######################################################################
+# Copyright 2019-2020 ANDRÉAS SUNDSTRÖM
+#
+# This file is part of constants_SI.
+#
+# Constants_SI is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License (version 3) as
+# published by the Free Software Foundation.
+#
+# Constants_SI is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with constants_SI. If not, see <http://www.gnu.org/licenses/>.
+######################################################################
 
 from math import pi
 PI=pi
