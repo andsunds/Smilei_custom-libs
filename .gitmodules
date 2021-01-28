@@ -1,0 +1,3 @@
+[submodule "binning"]
+	path = binning
+	url = git@github.com:albjohan/binning.git
