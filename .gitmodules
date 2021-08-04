@@ -1,3 +1,6 @@
 [submodule "binning"]
 	path = binning
 	url = git@github.com:albjohan/binning.git
+[submodule "constants_SI"]
+	path = constants_SI
+	url = git@github.com:andsunds/constants_SI.git
