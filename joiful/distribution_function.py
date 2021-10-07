@@ -71,7 +71,7 @@ def get_dist1D(x_data,weights, xlim,Nx,
     f=np.zeros(Nx, dtype=np.float64);
     
     if shift_coordinates:
-        x_bins=np.linspace(llim,ulim,num=Nx+1);
+        x_bins=np.linspace(llim,ulim,num=Nx,endpoint=False) + 0.5*dx
         x_data_ind=np.array(np.floor((sf(x_data)-llim)/dx), dtype=np.int)
     else:
         x_bins=np.linspace(llim,ulim,num=Nx);
