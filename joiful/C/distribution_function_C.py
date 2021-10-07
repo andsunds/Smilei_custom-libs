@@ -28,3 +28,22 @@ has not been implemeted yet.""")
     
     f=bin2Dw(x_data, p_data, weights, xlim[0], xlim[1], plim[0], plim[1], Nx, Np)
     return f, x_bins, p_bins
+
+
+def get_dist1D(x_data,weights, xlim,Nx,
+               shift_coordinates=False, **kwargs):
+    
+    # The size of the bins in x and p:
+    dx=(xlim[1]-xlim[0])/Nx;
+    
+    if shift_coordinates:
+        x_bins=np.linspace(xlim[0],xlim[1],num=Nx,endpoint=False) + .5*dx
+        x_data_ind=np.array(np.floor((x_data-xlim[0])/dx), dtype=np.int)
+    else:
+        x_bins=np.linspace(xlim[0],xlim[1],num=Nx)
+        x_data_ind=np.array(np.around((x_data-xlim[0])/dx), dtype=np.int)
+
+    p_dummy=np.zeros_like(weights)
+    f=bin2Dw(x_data, p_dummy, weights, xlim[0], xlim[1], -1, 1, Nx, 1)
+    
+    return f[0,:], x_bins
